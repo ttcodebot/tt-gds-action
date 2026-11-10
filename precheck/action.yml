@@ -73,6 +73,19 @@ runs:
         pdk_version: ${{ env.PDK_VERSION }}
         pdk_root: ${{ env.PDK_ROOT }}
 
+    # Temporary workaround: the gf180mcu KLayout deck logs memory usage by spawning
+    # `pmap` for every log line (~1000 process spawns), about half of the DRC run time.
+    # Remove once the logger is fixed in the PDK.
+    - name: Patch gf180mcu DRC deck logger
+      if: env.PDK == 'gf180mcuD'
+      shell: bash
+      run: |
+        DECK="$PDK_ROOT/$PDK/libs.tech/klayout/tech/drc/gf180mcu.drc"
+        sed -i 's/`pmap #{Process.pid} | tail -1`\[10, 40\].strip/"-"/' "$DECK"
+        if grep -q 'pmap' "$DECK"; then
+          echo "::warning::gf180mcu.drc logger patch did not apply; precheck will run unpatched"
+        fi
+
     - name: Install Nix
       uses: rikhuijzer/cache-install@c46c673b14b0780c6749d7a45f26ebc07c8c7388 # master + PR #27 (actions/cache v5, Node.js 24); switch back to a tag once a release includes it
       with:
